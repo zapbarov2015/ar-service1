@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AR Service</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 60px 20px;
+            margin: 20px 0;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .upload-area:hover {
+            background: #f0f4ff;
+            border-color: #764ba2;
+        }
+        .upload-area p {
+            color: #666;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: transform 0.2s;
+        }
+        .btn:hover {
+            transform: scale(1.05);
+        }
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            display: none;
+        }
+        .result.show {
+            display: block;
+        }
+        .link-box {
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            word-break: break-all;
+            font-size: 14px;
+            color: #333;
+        }
+        .copy-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .qr-img {
+            max-width: 200px;
+            margin: 20px auto;
+            display: block;
+            border: 3px solid white;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📤 Загрузи 3D модель</h1>
+        
+        <div class="upload-area" id="dropZone">
+            <div id="fileIcon" style="font-size: 60px;">📦</div>
+            <p>Перетащи .glb файл сюда<br>или нажми для выбора</p>
+            <input type="file" id="fileInput" accept=".glb,.gltf">
+        </div>
+
+        <button class="btn" id="uploadBtn">⬆️ Загрузить модель</button>
+
+        <div class="result" id="resultBox">
+            <h3 style="color: #333; margin-bottom: 15px;">✅ Готово!</h3>
+            
+            <div>
+                <strong>Ссылка на модель:</strong>
+                <div class="link-box" id="linkBox"></div>
+                <button class="copy-btn" id="copyBtn">📋 Копировать</button>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <strong>QR код:</strong>
+                <img id="qrImg" class="qr-img" src="" alt="QR Code">
+                <p style="font-size: 12px; color: #666; margin-top: 10px;">
+                    Открой на телефоне в браузере (Chrome/Safari)
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== НАСТРОЙКИ =====
+        // Замени на свой логин и имя репоз
