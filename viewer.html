@@ -54,10 +54,10 @@
 
   <div id="instructions">Коснитесь экрана для размещения модели</div>
 
-  <!-- РАБОЧИЕ СКРИПТЫ (без модулей) -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/GLTFLoader.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/webxr/ARButton.min.js"></script>
+  <!-- РАБОЧИЕ СКРИПТЫ (проверенные версии) -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/examples/js/loaders/GLTFLoader.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/examples/js/webxr/ARButton.min.js"></script>
 
   <script>
     // Получаем имя модели из ссылки
@@ -108,7 +108,7 @@
           model = gltf.scene;
           
           // Масштабируем модель
-          const scale = 0.3;
+          const scale = 0.5; // Увеличено для лучшей видимости
           model.scale.set(scale, scale, scale);
           
           // Добавляем на сцену
@@ -116,7 +116,7 @@
           
           statusEl.textContent = 'Модель загружена!';
           
-          // Добавляем кнопку AR
+          // Добавляем кнопку AR (теперь ARButton определен!)
           const arButton = ARButton.createButton(renderer, { 
             optionalFeatures: ['dom-overlay'],
             domOverlay: { root: document.body }
