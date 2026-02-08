@@ -1,84 +1,134 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>AR Viewer</title>
-    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-    <style>
-        body { margin: 0; overflow: hidden; }
-        .loading { 
-            position: fixed; 
-            top: 0; left: 0; 
-            width: 100%; height: 100%; 
-            background: white; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            flex-direction: column; 
-            z-index: 9999;
-        }
-        .loading h2 { margin-top: 20px; color: #333; }
-    </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <title>AR Model</title>
+  <style>
+    body { margin: 0; overflow: hidden; position: fixed; top: 0; left: 0; width: 100%; height: 100%; }
+    #loader {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: #000; color: white; display: flex; flex-direction: column;
+      justify-content: center; align-items: center; z-index: 9999;
+      font-family: Arial, sans-serif;
+    }
+    #loader h2 { margin-top: 20px; font-size: 24px; }
+    #loader p { margin-top: 10px; color: #aaa; font-size: 16px; }
+    #ar-scene { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+    #instructions {
+      position: fixed; bottom: 20px; left: 0; right: 0; text-align: center;
+      color: white; background: rgba(0,0,0,0.5); padding: 12px; font-size: 16px;
+      z-index: 1000; pointer-events: none;
+    }
+  </style>
 </head>
 <body>
-    <div class="loading" id="loader">
-        <div style="font-size: 60px;">⏳</div>
-        <h2>Загрузка модели...</h2>
-    </div>
+  <div id="loader">
+    <div style="font-size: 60px;">📷</div>
+    <h2>Запуск камеры...</h2>
+    <p>Разрешите доступ к камере</p>
+  </div>
 
-    <a-scene 
-        arjs="sourceType: webcam; 
-               detectionMode: mono_and_matrix;
-               matrixCodeType: 3x3;"
-        vr-mode-ui="enabled: false"
-        renderer="logarithmicDepthBuffer: true;"
-        embedded
-        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
-        
-        <a-assets>
-            <a-asset-item id="model" src=""></a-asset-item>
-        </a-assets>
+  <div id="instructions">Наведите камеру на пол и коснитесь экрана</div>
+  
+  <div id="ar-scene"></div>
 
-        <a-marker-camera></a-marker-camera>
-        
-        <a-entity 
-            gltf-model="#model" 
-            scale="5 5 5"
-            position="0 0.5 -2"
-            rotation="0 180 0">
-        </a-entity>
-        
-        <a-entity camera></a-entity>
-    </a-scene>
+  <script type="module">
+    // Загружаем необходимые библиотеки
+    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js';
+    import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/loaders/GLTFLoader.js';
+    import { ARButton } from 'https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/webxr/ARButton.js';
 
-    <script>
-        // Получаем ID модели из ссылки
-        const urlParams = new URLSearchParams(window.location.search);
-        const modelId = urlParams.get('id');
+    // Получаем имя модели из ссылки
+    const urlParams = new URLSearchParams(window.location.search);
+    const modelName = urlParams.get('model') || 'default';
+    
+    // Определяем путь к модели
+    const modelPath = `models/${modelName}.glb`;
+    
+    // Инициализация сцены
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.xr.enabled = true;
+    
+    document.getElementById('ar-scene').appendChild(renderer.domElement);
+    
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x000000);
+    
+    const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
+    
+    // Свет
+    const light = new THREE.DirectionalLight(0xffffff, 1);
+    light.position.set(1, 1, 1);
+    scene.add(light);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+    
+    // Загружаем модель
+    const loader = new GLTFLoader();
+    let model;
+    
+    loader.load(modelPath, 
+      function(gltf) {
+        model = gltf.scene;
         
-        if (!modelId) {
-            alert('Не указана модель!');
-            window.location.href = 'index.html';
+        // Масштабируем модель (подбираем опытным путём)
+        const scale = 0.5;
+        model.scale.set(scale, scale, scale);
+        
+        // Поворачиваем модель (чтобы смотрела на камеру)
+        model.rotation.y = Math.PI;
+        
+        // Добавляем на сцену (временно, пока нет трекинга)
+        model.position.set(0, 0, -1.5);
+        scene.add(model);
+        
+        // Скрываем лоадер
+        document.getElementById('loader').style.display = 'none';
+        
+        // Добавляем кнопку AR
+        document.body.appendChild(ARButton.createButton(renderer, { optionalFeatures: ['dom-overlay'], domOverlay: { root: document.body } }));
+      },
+      function(xhr) {
+        // Прогресс загрузки
+        const percent = (xhr.loaded / xhr.total * 100).toFixed(0);
+        document.querySelector('#loader p').textContent = `Загрузка модели: ${percent}%`;
+      },
+      function(error) {
+        console.error('Ошибка загрузки модели:', error);
+        document.getElementById('loader').innerHTML = `<div style="font-size:60px">❌</div><h2>Ошибка загрузки</h2><p>Модель "${modelName}" не найдена</p>`;
+      }
+    );
+    
+    // Анимация
+    function animate() {
+      renderer.setAnimationLoop(() => {
+        if (model) {
+          // Медленно вращаем модель для красоты
+          model.rotation.y += 0.01;
         }
-
-        // Замени на свой логин!
-        const GITHUB_USER = 'zapbarov2015';
-        const REPO_NAME = 'ar-service1';
-
-        // Формируем путь к модели
-        const modelPath = `https://raw.githubusercontent.com/${GITHUB_USER}/${REPO_NAME}/main/models/${modelId}.glb`;
-        
-        // Загружаем модель
-        document.getElementById('model').setAttribute('src', modelPath);
-        
-        // Скрываем лоадер после загрузки
-        window.addEventListener('load', () => {
-            setTimeout(() => {
-                document.getElementById('loader').style.display = 'none';
-            }, 2000);
-        });
-    </script>
+        renderer.render(scene, camera);
+      });
+    }
+    
+    // Обработка изменения размера окна
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+    
+    // Запуск
+    animate();
+    
+    // Обработка касаний для размещения модели (упрощённая версия)
+    renderer.domElement.addEventListener('touchstart', () => {
+      if (model) {
+        // При касании модель "падает" на пол (условно)
+        model.position.y = 0;
+      }
+    });
+  </script>
 </body>
 </html>
