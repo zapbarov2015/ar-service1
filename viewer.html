@@ -5,128 +5,155 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
   <title>AR Model</title>
   <style>
-    body { margin: 0; overflow: hidden; position: fixed; top: 0; left: 0; width: 100%; height: 100%; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      margin: 0; 
+      overflow: hidden; 
+      font-family: Arial, sans-serif;
+      background: #000;
+    }
     #loader {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: #000; color: white; display: flex; flex-direction: column;
       justify-content: center; align-items: center; z-index: 9999;
-      font-family: Arial, sans-serif;
     }
     #loader h2 { margin-top: 20px; font-size: 24px; }
     #loader p { margin-top: 10px; color: #aaa; font-size: 16px; }
-    #ar-scene { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+    #startButton {
+      margin-top: 30px;
+      padding: 15px 40px;
+      background: #00ff88;
+      color: #000;
+      border: none;
+      border-radius: 50px;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    #startButton:hover {
+      transform: scale(1.05);
+      background: #00cc66;
+    }
     #instructions {
       position: fixed; bottom: 20px; left: 0; right: 0; text-align: center;
-      color: white; background: rgba(0,0,0,0.5); padding: 12px; font-size: 16px;
-      z-index: 1000; pointer-events: none;
+      color: white; background: rgba(0,0,0,0.7); padding: 12px; font-size: 16px;
+      z-index: 1000;
     }
+    canvas { display: block; }
   </style>
 </head>
 <body>
   <div id="loader">
     <div style="font-size: 60px;">📷</div>
-    <h2>Запуск камеры...</h2>
-    <p>Разрешите доступ к камере</p>
+    <h2>AR Модель</h2>
+    <p id="status">Готово к запуску</p>
+    <button id="startButton">▶️ Начать AR</button>
   </div>
 
-  <div id="instructions">Наведите камеру на пол и коснитесь экрана</div>
-  
-  <div id="ar-scene"></div>
+  <div id="instructions">Коснитесь экрана для размещения модели</div>
 
   <script type="module">
-    // Загружаем необходимые библиотеки
+    // Загружаем библиотеки
     import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js';
     import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/loaders/GLTFLoader.js';
     import { ARButton } from 'https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/webxr/ARButton.js';
 
     // Получаем имя модели из ссылки
     const urlParams = new URLSearchParams(window.location.search);
-    const modelName = urlParams.get('model') || 'default';
+    const modelName = urlParams.get('model') || 'carbon';
     
-    // Определяем путь к модели
+    // Путь к модели
     const modelPath = `models/${modelName}.glb`;
     
-    // Инициализация сцены
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.xr.enabled = true;
-    
-    document.getElementById('ar-scene').appendChild(renderer.domElement);
-    
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x000000);
-    
-    const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
-    
-    // Свет
-    const light = new THREE.DirectionalLight(0xffffff, 1);
-    light.position.set(1, 1, 1);
-    scene.add(light);
-    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-    
-    // Загружаем модель
-    const loader = new GLTFLoader();
-    let model;
-    
-    loader.load(modelPath, 
-      function(gltf) {
+    let model, renderer, scene, camera;
+    let isARActive = false;
+
+    // Инициализация при нажатии кнопки
+    document.getElementById('startButton').addEventListener('click', init);
+
+    async function init() {
+      // Скрываем лоадер
+      document.getElementById('loader').style.display = 'none';
+      
+      // Создаём сцену
+      scene = new THREE.Scene();
+      
+      // Камера
+      camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
+      
+      // Рендерер
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.xr.enabled = true;
+      document.body.appendChild(renderer.domElement);
+      
+      // Свет
+      const light = new THREE.DirectionalLight(0xffffff, 1);
+      light.position.set(1, 2, 4);
+      scene.add(light);
+      
+      scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+      
+      // Загружаем модель
+      const loader = new GLTFLoader();
+      const statusEl = document.getElementById('status');
+      
+      statusEl.textContent = 'Загрузка модели...';
+      
+      try {
+        const gltf = await loader.loadAsync(modelPath);
         model = gltf.scene;
         
-        // Масштабируем модель (подбираем опытным путём)
-        const scale = 0.5;
+        // Масштабируем модель
+        const scale = 0.3;
         model.scale.set(scale, scale, scale);
         
-        // Поворачиваем модель (чтобы смотрела на камеру)
-        model.rotation.y = Math.PI;
-        
-        // Добавляем на сцену (временно, пока нет трекинга)
-        model.position.set(0, 0, -1.5);
+        // Добавляем на сцену
         scene.add(model);
         
-        // Скрываем лоадер
-        document.getElementById('loader').style.display = 'none';
+        statusEl.textContent = 'Модель загружена!';
         
         // Добавляем кнопку AR
-        document.body.appendChild(ARButton.createButton(renderer, { optionalFeatures: ['dom-overlay'], domOverlay: { root: document.body } }));
-      },
-      function(xhr) {
-        // Прогресс загрузки
-        const percent = (xhr.loaded / xhr.total * 100).toFixed(0);
-        document.querySelector('#loader p').textContent = `Загрузка модели: ${percent}%`;
-      },
-      function(error) {
-        console.error('Ошибка загрузки модели:', error);
-        document.getElementById('loader').innerHTML = `<div style="font-size:60px">❌</div><h2>Ошибка загрузки</h2><p>Модель "${modelName}" не найдена</p>`;
+        const arButton = ARButton.createButton(renderer, { 
+          optionalFeatures: ['dom-overlay'],
+          domOverlay: { root: document.body }
+        });
+        document.body.appendChild(arButton);
+        
+        // Анимация
+        renderer.setAnimationLoop(() => {
+          if (model) {
+            model.rotation.y += 0.01;
+          }
+          renderer.render(scene, camera);
+        });
+        
+        // Обработка касаний
+        renderer.domElement.addEventListener('touchstart', placeModel);
+        
+      } catch (error) {
+        console.error('Ошибка:', error);
+        alert('❌ Ошибка загрузки модели!\nПроверьте имя модели в ссылке.');
+        document.getElementById('loader').style.display = 'flex';
+        statusEl.textContent = 'Ошибка загрузки';
       }
-    );
-    
-    // Анимация
-    function animate() {
-      renderer.setAnimationLoop(() => {
-        if (model) {
-          // Медленно вращаем модель для красоты
-          model.rotation.y += 0.01;
-        }
-        renderer.render(scene, camera);
-      });
     }
-    
-    // Обработка изменения размера окна
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    });
-    
-    // Запуск
-    animate();
-    
-    // Обработка касаний для размещения модели (упрощённая версия)
-    renderer.domElement.addEventListener('touchstart', () => {
-      if (model) {
-        // При касании модель "падает" на пол (условно)
+
+    function placeModel(event) {
+      if (model && isARActive) {
+        // Здесь можно добавить логику размещения модели
         model.position.y = 0;
+      }
+    }
+
+    // Обработка изменения размера
+    window.addEventListener('resize', () => {
+      if (renderer && camera) {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
       }
     });
   </script>
