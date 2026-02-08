@@ -54,10 +54,10 @@
 
   <div id="instructions">Коснитесь экрана для размещения модели</div>
 
-  <!-- Загружаем библиотеки через простые скрипты -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/loaders/GLTFLoader.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/webxr/ARButton.js"></script>
+  <!-- РАБОЧИЕ СКРИПТЫ (без модулей) -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/GLTFLoader.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/webxr/ARButton.min.js"></script>
 
   <script>
     // Получаем имя модели из ссылки
@@ -81,4 +81,86 @@
       scene = new THREE.Scene();
       
       // Камера
-      camera = new THREE.PerspectiveCamera(70, window
+      camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
+      
+      // Рендерер
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.xr.enabled = true;
+      document.body.appendChild(renderer.domElement);
+      
+      // Свет
+      const light = new THREE.DirectionalLight(0xffffff, 1);
+      light.position.set(1, 2, 4);
+      scene.add(light);
+      
+      scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+      
+      // Загружаем модель
+      const loader = new THREE.GLTFLoader();
+      const statusEl = document.getElementById('status');
+      
+      statusEl.textContent = 'Загрузка модели...';
+      
+      loader.load(modelPath, 
+        function(gltf) {
+          model = gltf.scene;
+          
+          // Масштабируем модель
+          const scale = 0.3;
+          model.scale.set(scale, scale, scale);
+          
+          // Добавляем на сцену
+          scene.add(model);
+          
+          statusEl.textContent = 'Модель загружена!';
+          
+          // Добавляем кнопку AR
+          const arButton = ARButton.createButton(renderer, { 
+            optionalFeatures: ['dom-overlay'],
+            domOverlay: { root: document.body }
+          });
+          document.body.appendChild(arButton);
+          
+          // Анимация
+          renderer.setAnimationLoop(() => {
+            if (model) {
+              model.rotation.y += 0.01;
+            }
+            renderer.render(scene, camera);
+          });
+          
+          // Обработка касаний
+          renderer.domElement.addEventListener('touchstart', placeModel);
+          
+        },
+        function(xhr) {
+          statusEl.textContent = `Загрузка: ${Math.round(xhr.loaded / xhr.total * 100)}%`;
+        },
+        function(error) {
+          console.error('Ошибка:', error);
+          alert('❌ Ошибка загрузки модели!\nПроверьте имя модели в ссылке.');
+          document.getElementById('loader').style.display = 'flex';
+          statusEl.textContent = 'Ошибка загрузки';
+        }
+      );
+    }
+
+    function placeModel(event) {
+      if (model && isARActive) {
+        model.position.y = 0;
+      }
+    }
+
+    // Обработка изменения размера
+    window.addEventListener('resize', () => {
+      if (renderer && camera) {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      }
+    });
+  </script>
+</body>
+</html>
