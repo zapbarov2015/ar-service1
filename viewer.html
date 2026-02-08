@@ -11,6 +11,7 @@
       overflow: hidden; 
       font-family: Arial, sans-serif;
       background: #000;
+      height: 100vh;
     }
     #loader {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -53,12 +54,12 @@
 
   <div id="instructions">Коснитесь экрана для размещения модели</div>
 
-  <script type="module">
-    // Загружаем библиотеки
-    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js';
-    import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/loaders/GLTFLoader.js';
-    import { ARButton } from 'https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/webxr/ARButton.js';
+  <!-- Загружаем библиотеки НЕ через модули -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/loaders/GLTFLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/webxr/ARButton.js"></script>
 
+  <script>
     // Получаем имя модели из ссылки
     const urlParams = new URLSearchParams(window.location.search);
     const modelName = urlParams.get('model') || 'carbon';
@@ -72,7 +73,7 @@
     // Инициализация при нажатии кнопки
     document.getElementById('startButton').addEventListener('click', init);
 
-    async function init() {
+    function init() {
       // Скрываем лоадер
       document.getElementById('loader').style.display = 'none';
       
@@ -97,53 +98,57 @@
       scene.add(new THREE.AmbientLight(0xffffff, 0.6));
       
       // Загружаем модель
-      const loader = new GLTFLoader();
+      const loader = new THREE.GLTFLoader();
       const statusEl = document.getElementById('status');
       
       statusEl.textContent = 'Загрузка модели...';
       
-      try {
-        const gltf = await loader.loadAsync(modelPath);
-        model = gltf.scene;
-        
-        // Масштабируем модель
-        const scale = 0.3;
-        model.scale.set(scale, scale, scale);
-        
-        // Добавляем на сцену
-        scene.add(model);
-        
-        statusEl.textContent = 'Модель загружена!';
-        
-        // Добавляем кнопку AR
-        const arButton = ARButton.createButton(renderer, { 
-          optionalFeatures: ['dom-overlay'],
-          domOverlay: { root: document.body }
-        });
-        document.body.appendChild(arButton);
-        
-        // Анимация
-        renderer.setAnimationLoop(() => {
-          if (model) {
-            model.rotation.y += 0.01;
-          }
-          renderer.render(scene, camera);
-        });
-        
-        // Обработка касаний
-        renderer.domElement.addEventListener('touchstart', placeModel);
-        
-      } catch (error) {
-        console.error('Ошибка:', error);
-        alert('❌ Ошибка загрузки модели!\nПроверьте имя модели в ссылке.');
-        document.getElementById('loader').style.display = 'flex';
-        statusEl.textContent = 'Ошибка загрузки';
-      }
+      loader.load(modelPath, 
+        function(gltf) {
+          model = gltf.scene;
+          
+          // Масштабируем модель
+          const scale = 0.3;
+          model.scale.set(scale, scale, scale);
+          
+          // Добавляем на сцену
+          scene.add(model);
+          
+          statusEl.textContent = 'Модель загружена!';
+          
+          // Добавляем кнопку AR
+          const arButton = ARButton.createButton(renderer, { 
+            optionalFeatures: ['dom-overlay'],
+            domOverlay: { root: document.body }
+          });
+          document.body.appendChild(arButton);
+          
+          // Анимация
+          renderer.setAnimationLoop(() => {
+            if (model) {
+              model.rotation.y += 0.01;
+            }
+            renderer.render(scene, camera);
+          });
+          
+          // Обработка касаний
+          renderer.domElement.addEventListener('touchstart', placeModel);
+          
+        },
+        function(xhr) {
+          statusEl.textContent = `Загрузка: ${Math.round(xhr.loaded / xhr.total * 100)}%`;
+        },
+        function(error) {
+          console.error('Ошибка:', error);
+          alert('❌ Ошибка загрузки модели!\nПроверьте имя модели в ссылке.');
+          document.getElementById('loader').style.display = 'flex';
+          statusEl.textContent = 'Ошибка загрузки';
+        }
+      );
     }
 
     function placeModel(event) {
       if (model && isARActive) {
-        // Здесь можно добавить логику размещения модели
         model.position.y = 0;
       }
     }
