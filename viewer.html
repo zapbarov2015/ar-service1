@@ -60,23 +60,20 @@
   <div id="instructions">Наведите камеру на пол и коснитесь экрана</div>
   <div id="ar-scene"></div>
 
-  <!-- РАБОЧИЕ СКРИПТЫ (проверенные версии) -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/GLTFLoader.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/webxr/ARButton.min.js"></script>
+  <!-- РАБОЧИЕ СКРИПТЫ (версия 0.128.0 — последняя с ARButton без модулей) -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/webxr/ARButton.js"></script>
 
   <script>
     // Получаем имя модели из ссылки
     const urlParams = new URLSearchParams(window.location.search);
-    // ЗАМЕНИЛИ 'robot' НА 'carbon' ↓↓↓
     const modelName = urlParams.get('model') || 'carbon';
     
     // Путь к модели
-    // ЗАМЕНИЛИ 'robot' НА 'carbon' ↓↓↓
     const modelPath = `models/${modelName}.glb`;
     
     let model, renderer, scene, camera;
-    let isARActive = false;
 
     // Инициализация при нажатии кнопки
     document.getElementById('startButton').addEventListener('click', init);
@@ -116,7 +113,7 @@
           model = gltf.scene;
           
           // Масштабируем модель
-          const scale = 0.8; // Увеличено для лучшей видимости
+          const scale = 0.8;
           model.scale.set(scale, scale, scale);
           
           // Добавляем на сцену
@@ -124,11 +121,8 @@
           
           statusEl.textContent = 'Модель загружена!';
           
-          // Добавляем кнопку AR
-          const arButton = ARButton.createButton(renderer, { 
-            optionalFeatures: ['dom-overlay'],
-            domOverlay: { root: document.body }
-          });
+          // Добавляем кнопку AR (работает в версии 0.128.0!)
+          const arButton = ARButton.createButton(renderer);
           document.body.appendChild(arButton);
           
           // Анимация
@@ -139,8 +133,12 @@
             renderer.render(scene, camera);
           });
           
-          // Обработка касаний
-          renderer.domElement.addEventListener('touchstart', placeModel);
+          // Обработка касаний для размещения модели
+          renderer.domElement.addEventListener('touchstart', function() {
+            if (model) {
+              model.position.y = 0;
+            }
+          });
           
         },
         function(xhr) {
@@ -153,12 +151,6 @@
           statusEl.textContent = 'Ошибка загрузки';
         }
       );
-    }
-
-    function placeModel(event) {
-      if (model && isARActive) {
-        model.position.y = 0;
-      }
     }
 
     // Обработка изменения размера
