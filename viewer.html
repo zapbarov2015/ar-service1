@@ -2,17 +2,14 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AR Model</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
     body { 
       margin: 0; 
       overflow: hidden; 
-      font-family: Arial, sans-serif;
       background: #000;
       height: 100vh;
-      position: relative;
     }
     #loader {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -43,7 +40,6 @@
       color: white; background: rgba(0,0,0,0.7); padding: 12px; font-size: 16px;
       z-index: 1000;
     }
-    canvas { display: block; }
   </style>
 </head>
 <body>
@@ -56,19 +52,11 @@
 
   <div id="instructions">Наведите камеру на пол и коснитесь экрана</div>
 
-  <!-- РАБОЧИЕ СКРИПТЫ (без маркеров) -->
+  <!-- ВАЖНО: Сначала загружаем A-Frame, потом AR.js -->
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
   <script src="https://aframe.io/releases/1.4.0/aframe-ar.min.js"></script>
 
   <script>
-    // Получаем имя модели из ссылки
-    const urlParams = new URLSearchParams(window.location.search);
-    const modelName = urlParams.get('model') || 'carbon';
-    
-    // Путь к модели
-    const modelPath = `models/${modelName}.glb`;
-    
-    // Инициализация при нажатии кнопки
     document.getElementById('startButton').addEventListener('click', function() {
       // Скрываем лоадер
       document.getElementById('loader').style.display = 'none';
@@ -76,27 +64,31 @@
       // Создаём сцену
       const scene = document.createElement('a-scene');
       scene.setAttribute('embedded', '');
-      scene.setAttribute('arjs', 'sourceType: webcam; debugUIEnabled: false; detectionMode: mono;');
-
+      scene.setAttribute('arjs', 'sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;');
+      
       // Добавляем свет
       const light = document.createElement('a-entity');
       light.setAttribute('light', 'type: ambient; color: #ffffff; intensity: 0.6;');
       scene.appendChild(light);
-
+      
       // Добавляем камеру
       const camera = document.createElement('a-entity');
       camera.setAttribute('camera', '');
       camera.setAttribute('position', '0 1.6 0');
       scene.appendChild(camera);
-
+      
       // Загружаем модель
+      const urlParams = new URLSearchParams(window.location.search);
+      const modelName = urlParams.get('model') || 'carbon';
+      const modelPath = `models/${modelName}.glb`;
+      
       const assets = document.createElement('a-assets');
       const modelAsset = document.createElement('a-asset-item');
       modelAsset.setAttribute('id', 'model');
       modelAsset.setAttribute('src', modelPath);
       assets.appendChild(modelAsset);
       scene.appendChild(assets);
-
+      
       // Добавляем модель
       const model = document.createElement('a-entity');
       model.setAttribute('gltf-model', '#model');
@@ -104,15 +96,13 @@
       model.setAttribute('position', '0 0.5 -1.5');
       model.setAttribute('rotation', '0 180 0');
       scene.appendChild(model);
-
-      // Добавляем поверхность для отслеживания
-      const plane = document.createElement('a-entity');
-      plane.setAttribute('geometry', 'primitive: plane; width: 10; height: 10;');
-      plane.setAttribute('position', '0 0 0');
-      plane.setAttribute('rotation', '-90 0 0');
-      plane.setAttribute('material', 'color: #000; opacity: 0.01;');
-      scene.appendChild(plane);
-
+      
+      // Добавляем маркер (для стабильности)
+      const marker = document.createElement('a-marker');
+      marker.setAttribute('preset', 'hiro');
+      marker.appendChild(model);
+      scene.appendChild(marker);
+      
       document.body.appendChild(scene);
     });
   </script>
